@@ -70,9 +70,9 @@ const memos = ref<Memo[]>([])
 const newMemo = ref('')
 let dragIndex = ref(-1)
 
-const activeGroup = ref('')
+const activeGroup = ref('全部')
 
-const groupNames = computed(() => Object.keys(groupedMemos.value))
+const groupNames = computed(() => ['全部', ...Object.keys(groupedMemos.value)])
 
 const groupedMemos = computed(() => {
     const groups: Record<string, Memo[]> = {}
@@ -87,12 +87,12 @@ const groupedMemos = computed(() => {
 })
 
 const displayMemos = computed(() => {
-    if (!activeGroup.value) return memos.value
+    if (activeGroup.value === '全部') return memos.value
     return groupedMemos.value[activeGroup.value] || []
 })
 
 const getGroupLength = (name: string) => {
-    return groupedMemos.value[name]?.length || 0
+    return name === '全部' ? memos.value.length : groupedMemos.value[name]?.length || 0
 }
 
 watch(() => props.liveInfo.name, (newName) => {

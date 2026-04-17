@@ -75,7 +75,7 @@ import { Setting } from '@element-plus/icons-vue'
 import { invoke } from '@tauri-apps/api/tauri'
 import { ref } from 'vue'
 import { LiveInfoImp } from '@/types'
-import Logo from '@/assets/logo.png'
+import { DEFAULT_LIVE_INFO, DEFAULT_MESSAGE } from '@/constant'
 import { ConnectionConfig } from 'tauri-plugin-websocket-api'
 import { douyin } from '@/proto/dy.js'
 import { ElMessage } from 'element-plus'
@@ -95,28 +95,9 @@ const danmuListRef = ref<InstanceType<typeof DanmuList>>()
 
 const dialogVisible = ref(false)
 
-const messageList = ref<Message[]>([
-    {
-        id: '1',
-        name: '管理员',
-        msg: '欢迎使用直播盒子，输入直播地址开始安静看直播，没有刷礼物功能，所以理性看播，不要乱消费',
-    },
-])
+const messageList = ref<Message[]>([ ...DEFAULT_MESSAGE ])
 
 let socketClient: SocketCli
-
-const DEFAULT_LIVE_INFO = {
-    uid: '888888',
-    status: 0,
-    title: '直播标题',
-    name: 'Livebox',
-    roomId: '888888',
-    avatar: Logo,
-    fans: 0,
-    customer: 0,
-    totalLike: 0,
-    signature: '',
-}
 
 const liveInfo = ref<LiveInfo>({ ...DEFAULT_LIVE_INFO })
 
@@ -227,13 +208,7 @@ const startListen = async (inputUrl: string) => {
 
 const clearLivex = () => {
     liveVideoRef.value?.destroyPlayer()
-    messageList.value = [
-        {
-            id: '1',
-            name: '管理员',
-            msg: '欢迎使用直播盒子，输入直播地址开始安静看直播，没有刷礼物功能，所以理性看播，不要乱消费',
-        },
-    ]
+    messageList.value = [...DEFAULT_MESSAGE]
     socketClient?.disconnect()
 }
 
