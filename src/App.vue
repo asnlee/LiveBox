@@ -17,7 +17,10 @@
             />
             <DanmuList 
                 ref="danmuListRef"
-                :messageList="messageList" 
+                :checkList="checkList"
+                :pushUrl="pushUrl"
+                v-model:liveInfo="liveInfo"
+                @updateDiamond="updateDiamond"
             />
         </div>
 
@@ -75,7 +78,7 @@ import { Setting } from '@element-plus/icons-vue'
 import { invoke } from '@tauri-apps/api/tauri'
 import { ref } from 'vue'
 import { LiveInfoImp } from '@/types'
-import { DEFAULT_LIVE_INFO, DEFAULT_MESSAGE } from '@/constant'
+import { DEFAULT_LIVE_INFO } from '@/constant'
 import { ConnectionConfig } from 'tauri-plugin-websocket-api'
 import { douyin } from '@/proto/dy.js'
 import { ElMessage } from 'element-plus'
@@ -86,7 +89,6 @@ import SearchBar from '@/components/SearchBar.vue'
 import LiveVideo from '@/components/LiveVideo.vue'
 import type { LiveInfo } from '@/components/LiveVideo.vue'
 import DanmuList from '@/components/DanmuList.vue'
-import type { Message } from '@/components/DanmuList.vue'
 import MemoList from '@/components/MemoList.vue'
 
 const searchBarRef = ref<InstanceType<typeof SearchBar>>()
@@ -94,8 +96,6 @@ const liveVideoRef = ref<InstanceType<typeof LiveVideo>>()
 const danmuListRef = ref<InstanceType<typeof DanmuList>>()
 
 const dialogVisible = ref(false)
-
-const messageList = ref<Message[]>([ ...DEFAULT_MESSAGE ])
 
 let socketClient: SocketCli
 
@@ -208,8 +208,12 @@ const startListen = async (inputUrl: string) => {
 
 const clearLivex = () => {
     liveVideoRef.value?.destroyPlayer()
-    messageList.value = [...DEFAULT_MESSAGE]
+    danmuListRef.value?.clearMessages()
     socketClient?.disconnect()
+}
+
+const updateDiamond = (value: number) => {
+    diamond.value = diamond.value + value
 }
 
 const creatSokcet = async (roomId: string, uniqueId: string, ttwid: string) => {
@@ -229,12 +233,6 @@ const creatSokcet = async (roomId: string, uniqueId: string, ttwid: string) => {
 
 const onMessage = (msg: any) => {
     const decodeMsg = douyin.PushFrame.decode(msg.data)
-    if (danmuListRef.value) {
-        const msgDom: HTMLElement | null = document.getElementById('liveMsg')
-        if (msgDom) {
-            msgDom.scrollTop = msgDom.scrollHeight
-        }
-    }
     const gzipData = pako.inflate(decodeMsg.payload)
     const response = douyin.Response.decode(gzipData)
 
@@ -245,133 +243,7 @@ const onMessage = (msg: any) => {
         }).finish()
         socketClient?.send(ack)
     }
-    handleMessage(response.messagesList)
-}
-
-const handleMessage = (messageList: douyin.Message) => {
-    messageList.forEach((msg) => {
-        switch (msg.method) {
-            case 'WebcastMatchAgainstScoreMessage':
-                break
-            case 'WebcastLikeMessage':
-                likeLive(msg.payload)
-                break
-            case 'WebcastMemberMessage':
-                enterLive(msg.payload)
-                break
-            case 'WebcastGiftMessage':
-                decodeGift(msg.payload)
-                break
-            case 'WebcastChatMessage':
-                decodeChat(msg.payload)
-                break
-            case 'WebcastSocialMessage':
-                followLive(msg.payload)
-                break
-            case 'WebcastUpdateFanTicketMessage':
-                break
-            case 'WebcastCommonTextMessage':
-                break
-            case 'WebcastProductChangeMessage':
-                break
-            case 'WebcastRoomUserSeqMessage':
-                countLive(msg.payload)
-                break
-            default:
-                console.log('待解析方法' + msg.method)
-                break
-        }
-    })
-}
-
-const decodeChat = (data: any) => {
-    const chatMsg = douyin.ChatMessage.decode(data)
-    const { common, user, content } = chatMsg
-    const message = {
-        id: common.msgId,
-        name: user.nickName,
-        msg: content,
-    }
-    checkList.value.includes('chat') && messageList.value.push(message)
-    pushMessage({ type: 'chat', data: message })
-}
-
-const decodeGift = (data: any) => {
-    const giftMsg = douyin.GiftMessage.decode(data)
-    const { common, user, gift, repeatCount } = giftMsg
-    const message = {
-        id: common.msgId,
-        name: user.nickName,
-        msg: `送出${gift.name} x${repeatCount}个`,
-    }
-    checkList.value.includes('gift') && messageList.value.push(message)
-    diamond.value = diamond.value + gift.diamondCount * repeatCount
-    pushMessage({ type: 'gift', data: message })
-}
-
-const enterLive = (data: any) => {
-    const enteryMsg = douyin.MemberMessage.decode(data)
-    const { common, user } = enteryMsg
-    const message = {
-        id: common.msgId,
-        name: user.nickName,
-        msg: '来了',
-    }
-    checkList.value.includes('comein') && messageList.value.push(message)
-    pushMessage({ type: 'comein', data: message })
-}
-
-const likeLive = (data: any) => {
-    const likeMsg = douyin.LikeMessage.decode(data)
-    const { common, user, total } = likeMsg
-    const message = {
-        id: common.msgId,
-        name: user.nickName,
-        msg: `为主播点赞了`,
-    }
-    liveInfo.value = {
-        ...liveInfo.value,
-        totalLike: total,
-    }
-    checkList.value.includes('like') && messageList.value.push(message)
-    pushMessage({ type: 'like', data: message })
-}
-
-const followLive = (data: any) => {
-    const followMsg = douyin.SocialMessage.decode(data)
-    const { common, user, followCount } = followMsg
-    const message = {
-        id: common.msgId,
-        name: user.nickName,
-        msg: `关注了主播`,
-    }
-    liveInfo.value = {
-        ...liveInfo.value,
-        fans: followCount,
-    }
-    checkList.value.includes('follow') && messageList.value.push(message)
-    pushMessage({ type: 'follow', data: message })
-}
-
-const countLive = (data: any) => {
-    const countMsg = douyin.RoomUserSeqMessage.decode(data)
-    liveInfo.value = {
-        ...liveInfo.value,
-        customer: countMsg.onlineUserForAnchor,
-    }
-}
-
-const pushMessage = async (msg: { type: string; data: any }) => {
-    if (!pushUrl.value) return
-    try {
-        await fetch(pushUrl.value, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(msg),
-        })
-    } catch (error) {
-        console.error('push message error:', error)
-    }
+    danmuListRef.value?.handleMessage(response.messagesList)
 }
 </script>
 

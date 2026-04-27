@@ -27,6 +27,8 @@
 import DPlayer from 'dplayer'
 import Hls from 'hls.js'
 import Flv from 'flv.js'
+import { writeBinaryFile } from '@tauri-apps/api/fs';
+import { dialog } from '@tauri-apps/api';
 
 export interface LiveInfo {
     uid: string
@@ -174,20 +176,51 @@ const loadLive = (videoUrl: string, live: boolean = true) => {
     })
 }
 
+const saveScreenshot = async (link: HTMLAnchorElement) => {
+    const base64Data = link.href.split(',')[1]
+    const time = new Date().toLocaleString('zh-CN').replace(/[\/\s:]/g, '-')
+    const fileName = `${props.liveInfo.name}(${time}).png`
+
+    try {
+        const binaryString = atob(base64Data)
+        const bytes = new Uint8Array(binaryString.length)
+        for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i)
+        }
+
+        const filePath = await dialog.save({
+            defaultPath: fileName,
+            filters: [{ name: 'Images', extensions: ['png'] }]
+        })
+
+        if (filePath) {
+            await writeBinaryFile(filePath, bytes)
+        }
+    } catch (e) {
+        alert('保存截图失败:' + e)
+        console.error('保存截图失败:', e)
+    }
+}
+
 const captureScreenshot = (video: HTMLVideoElement) => {
-    if (!video) return;
+    if (!video) return
 
-    const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const ctx = canvas.getContext('2d') as any;
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const canvas = document.createElement('canvas')
+    canvas.width = video.videoWidth
+    canvas.height = video.videoHeight
+    const ctx = canvas.getContext('2d') as CanvasRenderingContext2D
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
 
-    const link = document.createElement('a');
-    const time = new Date().toLocaleString().split(' ').pop() || Date.now();
-    link.download = `${props.liveInfo.name}(${time}).png`;
-    link.href = canvas.toDataURL('image/png');
-    link.click();
+    const link = document.createElement('a')
+    const time = new Date().toLocaleString('zh-CN').replace(/[\/\s:]/g, '-')
+    link.download = `${props.liveInfo.name}(${time}).png`
+    link.href = canvas.toDataURL('image/png')
+    link.click()
+    
+    // Save to file using Tauri fs plugin
+    if (window.__TAURI__){
+        saveScreenshot(link)
+    }
 }
 
 const destroyPlayer = () => {
