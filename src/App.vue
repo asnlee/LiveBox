@@ -186,6 +186,7 @@ const startListen = async (inputUrl: string) => {
                     roomInfo.stream_url.default_resolution
                 ].replace('http://', 'https://')
                 liveVideoRef.value?.loadLive(videoUrl)
+                pushUrl.value = videoUrl
                 creatSokcet(roomInfo.id_str, roomJson.unique_id, roomJson.ttwid)
             } else {
                 ElMessage.success('live is over!')
