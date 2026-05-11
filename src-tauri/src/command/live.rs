@@ -83,3 +83,34 @@ pub async fn open_window(
         .unwrap();
     }
 }
+
+#[tauri::command]
+pub async fn upload_file(file_name: String, file_data: Vec<u8>) -> Result<String, String> {
+    println!("[upload_file] start, file_name: {}, file_size: {}", file_name, file_data.len());
+    let client = reqwest::Client::new();
+
+    let response = client
+        .post(format!("https://html2web.codepoem.top/api/cos/files/mall/{}", file_name))
+        .header("Authorization", "asnlee")
+        .body(file_data)
+        .send()
+        .await
+        .map_err(|e| {
+            println!("[upload_file] request error: {}", e);
+            e.to_string()
+        })?;
+
+    println!("[upload_file] response status: {}", response.status());
+    let json: serde_json::Value = response.json().await.map_err(|e| {
+        println!("[upload_file] parse json error: {}", e);
+        e.to_string()
+    })?;
+    println!("[upload_file] response json: {:?}", json);
+
+    let result = json.get("message")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string())
+        .ok_or_else(|| "Failed to get message from response".to_string());
+
+    result
+}

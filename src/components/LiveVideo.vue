@@ -18,17 +18,27 @@
             </div>
             <div class="diamond">收益：{{ diamond }}</div> -->
         </div>
+        <div v-if="dplayer" class="searchSame" @click.stop="handleSearchSame" :style="{opacity: loading ? 0.7 : 1}">
+            <el-icon :class="{ 'is-loading': loading }">
+                <Loading v-if="loading" />
+                <Search v-else />
+            </el-icon>
+            搜同款
+        </div>
         <div id="dplayer" class="dplayer"></div>
         <div v-if="liveInfo.status === 4" class="over">直播已结束</div>
     </div>
 </template>
 
 <script setup lang="ts">
+import { Search, Loading } from '@element-plus/icons-vue'
 import DPlayer from 'dplayer'
 import Hls from 'hls.js'
 import Flv from 'flv.js'
 import { writeBinaryFile } from '@tauri-apps/api/fs';
 import { dialog } from '@tauri-apps/api';
+import { invoke } from '@tauri-apps/api/tauri'
+import { ref } from 'vue';
 
 export interface LiveInfo {
     uid: string
@@ -223,6 +233,54 @@ const captureScreenshot = (video: HTMLVideoElement) => {
     }
 }
 
+const loading = ref(false)
+const handleSearchSame = async () => {
+    const video = dplayer?.video
+    if (!video || loading.value) return
+
+    let width = video.videoWidth
+    let height = video.videoHeight
+    const maxSize = 720
+    if (width > maxSize || height > maxSize) {
+        const ratio = Math.min(maxSize / width, maxSize / height)
+        width = Math.floor(width * ratio)
+        height = Math.floor(height * ratio)
+    }
+
+    const canvas = document.createElement('canvas')
+    canvas.width = width
+    canvas.height = height
+    const ctx = canvas.getContext('2d') as CanvasRenderingContext2D
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+
+    canvas.toBlob(async (blob) => {
+        if (!blob) return
+        const arrayBuffer = await blob.arrayBuffer()
+        const bytes = Array.from(new Uint8Array(arrayBuffer))
+        const name = `live-screenshot.jpg`
+
+        try {
+            loading.value = true
+            const imageUrl = await invoke<string>('upload_file', { fileName: name, fileData: bytes })
+            const baiduUrl = 'https://graph.baidu.com/details?isfromtusoupc=1&tn=pc&carousel=0&promotion_name=pc_image_shituindex&extUiData%5bisLogoShow%5d=1&image=' + imageUrl
+            invoke('open_window', {
+                appUrl: baiduUrl,
+                appName: '搜同款',
+                platform: 'web',
+                userAgent: navigator.userAgent,
+                resize: false,
+                width: 1000,
+                height: 800,
+                jsContent: '',
+            })
+        } catch (e) {
+            console.log('上传失败')
+        } finally {
+            loading.value = false
+        }
+    }, 'image/jpeg', 0.8)
+}
+
 const destroyPlayer = () => {
     stopLatencyMonitor()
     if (hls) {
@@ -317,6 +375,22 @@ defineExpose({
         z-index: 999;
         user-select: none;
         color: white;
+    }
+
+    .searchSame {
+        position: absolute;
+        top: 50%;
+        right: 10px;
+        transform: translateY(-50%);
+        color: white;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        z-index: 999;
+        letter-spacing: 2px;
+        font-size: 14px;
     }
 
     .dplayer {

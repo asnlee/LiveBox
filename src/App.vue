@@ -1,5 +1,9 @@
 <template>
     <div class="container">
+        <div class="time">
+            {{ currentTime }}
+        </div>
+
         <div class="liveUrl">
             <SearchBar 
                 ref="searchBarRef"
@@ -76,7 +80,7 @@
 <script setup lang="ts">
 import { Setting } from '@element-plus/icons-vue'
 import { invoke } from '@tauri-apps/api/tauri'
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { LiveInfoImp } from '@/types'
 import { DEFAULT_LIVE_INFO } from '@/constant'
 import { ConnectionConfig } from 'tauri-plugin-websocket-api'
@@ -245,6 +249,19 @@ const onMessage = (msg: any) => {
     }
     danmuListRef.value?.handleMessage(response.messagesList)
 }
+
+let timeInterval: any
+const currentTime = ref(new Date().toLocaleTimeString())
+const updateTime = () => {
+    currentTime.value = new Date().toLocaleTimeString()
+}
+onMounted(() => {
+    updateTime()
+    timeInterval = setInterval(updateTime, 1000)
+})
+onUnmounted(() => {
+    clearInterval(timeInterval)
+})
 </script>
 
 <style scoped lang="scss">
@@ -256,6 +273,7 @@ const onMessage = (msg: any) => {
     flex-direction: column;
     align-items: center;
     background-color: #f5f5f5;
+    position: relative;
     .liveUrl {
         display: flex;
         flex-direction: row;
@@ -275,9 +293,16 @@ const onMessage = (msg: any) => {
         justify-content: center;
     }
 
+    .time {
+        position: absolute;
+        top: 5vh;
+        left: 3vh;
+        z-index: 999;
+    }
+
     .pushUrl {
-        position: fixed;
-        top: 3vh;
+        position: absolute;
+        top: 5vh;
         right: 3vh;
         z-index: 999;
     }
