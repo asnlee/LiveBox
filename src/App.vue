@@ -185,8 +185,8 @@ const startListen = async (inputUrl: string) => {
                     url: url,
                 })
                 const videoUrls = [
-                    streamInfo.stream.origin.main.flv,
-                    streamInfo.stream.origin.backup.flv,
+                    streamInfo?.stream?.origin?.main?.flv,
+                    streamInfo?.stream?.origin?.backup?.flv,
                     roomInfo.stream_url.flv_pull_url[
                         roomInfo.stream_url.default_resolution
                     ],
