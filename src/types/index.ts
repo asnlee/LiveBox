@@ -1,5 +1,6 @@
 export interface LiveInfoImp {
     room_info: string
+    stream_info: string
     ttwid: string
     unique_id: string
 }

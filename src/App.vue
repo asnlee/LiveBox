@@ -1,15 +1,18 @@
 <template>
     <div class="container">
-        <div class="time">
-            {{ currentTime }}
-        </div>
 
         <div class="liveUrl">
+            <div class="time">
+                {{ currentTime }}
+            </div>
             <SearchBar 
                 ref="searchBarRef"
                 @start="startListen" 
                 @openWindow="openWindow" 
             />
+            <el-icon :size="20" class="pushUrl" @click="dialogVisible = true">
+                <Setting />
+            </el-icon>
         </div>
 
         <div class="liveBox">
@@ -27,10 +30,6 @@
                 @updateDiamond="updateDiamond"
             />
         </div>
-
-        <el-icon :size="20" class="pushUrl" @click="dialogVisible = true">
-            <Setting />
-        </el-icon>
 
         <MemoList :liveInfo="liveInfo" />
     </div>
@@ -158,8 +157,11 @@ const startListen = async (inputUrl: string) => {
 
         const roomJson: LiveInfoImp = await invoke('get_live_html', { url })
         let roomInfo: any = {}
+        let streamInfo: any = {}
         try { roomInfo = JSON.parse(roomJson.room_info) } catch (error) {}
+        try { streamInfo = JSON.parse(roomJson.stream_info.replace(/\\"/g, '"')) } catch (error) {console.log(error) }
         console.log('roomInfo----', roomInfo)
+        console.log('streamInfo----', streamInfo)
 
         if (roomInfo.id_str) {
             if (roomInfo.status) {
@@ -182,9 +184,16 @@ const startListen = async (inputUrl: string) => {
                     roomId: url.match(/\d{9,12}/g)?.shift() || roomInfo.id_str,
                     url: url,
                 })
-                let videoUrl = roomInfo.stream_url.flv_pull_url[
-                    roomInfo.stream_url.default_resolution
-                ].replace('http://', 'https://')
+                const videoUrls = [
+                    streamInfo.stream.origin.main.flv,
+                    streamInfo.stream.origin.backup.flv,
+                    roomInfo.stream_url.flv_pull_url[
+                        roomInfo.stream_url.default_resolution
+                    ],
+                ].filter(url => url).map(url => url.replace('http://', 'https://'))
+                console.log('videoUrls', videoUrls)
+                
+                let videoUrl = videoUrls[0]
                 liveVideoRef.value?.loadLive(videoUrl)
                 pushUrl.value = videoUrl
                 creatSokcet(roomInfo.id_str, roomJson.unique_id, roomJson.ttwid)
@@ -282,6 +291,7 @@ onUnmounted(() => {
         align-items: center;
         height: 36px;
         width: 100%;
+        position: relative;
     }
 
     .liveBox {
@@ -296,15 +306,17 @@ onUnmounted(() => {
 
     .time {
         position: absolute;
-        top: 5vh;
+        top: 50%;
         left: 3vh;
+        transform: translateY(-50%);
         z-index: 999;
     }
 
     .pushUrl {
         position: absolute;
-        top: 5vh;
+        top: 50%;
         right: 3vh;
+        transform: translateY(-50%);
         z-index: 999;
     }
 }
