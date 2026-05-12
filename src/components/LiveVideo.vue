@@ -32,9 +32,6 @@
 
 <script setup lang="ts">
 import { Search, Loading } from '@element-plus/icons-vue'
-import DPlayer from 'dplayer'
-import Hls from 'hls.js'
-import Flv from 'flv.js'
 import { writeBinaryFile } from '@tauri-apps/api/fs';
 import { dialog } from '@tauri-apps/api';
 import { invoke } from '@tauri-apps/api/tauri'
@@ -62,14 +59,8 @@ const emit = defineEmits<{
     (e: 'pay'): void
 }>()
 
-let dplayer: DPlayer | null = null
-let hls: Hls | null = null
-let flvPlayer: any = null
+let dplayer: any = null
 let latencyTimer: ReturnType<typeof setInterval> | null = null
-
-const handlePay = () => {
-    emit('pay')
-}
 
 const startLatencyMonitor = () => {
     stopLatencyMonitor()
@@ -106,131 +97,42 @@ const loadLive = (videoUrl: string, live: boolean = true) => {
         dplayer.destroy()
         dplayer = null
     }
-    hls = null
-    flvPlayer = null
 
-    if (videoUrl.includes('m3u8')) {
-        dplayer = new DPlayer({
-            container: document.getElementById('dplayer'),
-            screenshot: true,
-            autoplay: true,
-            live: live,
-            lang: 'zh-cn',
-            video: {
-                url: '',
-                type: 'customHls',
-                customType: {
-                    customHls: function (video: any, _: any) {
-                        hls = new Hls({
-                            liveSyncDuration: 1,
-                            liveMaxLatencyDuration: 2,
-                            liveDurationInfinity: true,
-                            maxBufferLength: 5,
-                            maxMaxBufferLength: 10,
-                        })
-                        hls.loadSource(videoUrl)
-                        hls.attachMedia(video)
-                        if (live) startLatencyMonitor()
-                    },
-                },
-            },
-        })
-    } else if (videoUrl.includes('mp4')) {
-        dplayer = new DPlayer({
-            container: document.getElementById('dplayer'),
-            live: live,
-            autoplay: true,
-            screenshot: true,
-            fullScreen: false,
-            lang: 'zh-cn',
-            video: {
-                url: videoUrl,
-                type: 'mp4',
-            },
-        })
-    } else if (videoUrl.includes('flv')) {
-        dplayer = new DPlayer({
-            container: document.getElementById('dplayer'),
-            screenshot: true,
-            live: live,
-            autoplay: true,
-            lang: 'zh-cn',
-            video: {
-                url: videoUrl,
-                type: 'customFlv',
-                customType: {
-                    customFlv: function (video: any, _: any) {
-                        flvPlayer = Flv.createPlayer({
-                            type: 'flv',
-                            url: videoUrl,
-                            hasAudio: true,
-                            hasVideo: true
-                        }, {
-                            isLive: true,
-                            enableStashBuffer: false,
-                            lazyLoad: false,
-                            accurateSeek: false,
-                            fixAudioTimestampGap: true
-                        })
-                        flvPlayer.attachMediaElement(video)
-                        flvPlayer.load()
-                        if (live) startLatencyMonitor()
-                    },
-                },
-            },
-        })
+    const playerConfig: any = {
+        el: document.getElementById('dplayer'),
+        url: videoUrl,
+        isLive: live,
+        width: '100%',
+        height: '100%',
+        volume: 1,
+        pip: true,
+        download: false,
+        cssFullscreen: true,
+        keyShortcut: true,
+        ignores: ['replay']
+    };
+    const liveConfig = {
+        retryCount: 3,
+        retryDelay: 1000,
+        loadTimeout: 10000,
+        targetLatency: 0,
+        maxLatency:  0,
+        disconnectTime: 0
+    };
+
+    if (videoUrl.includes('.flv')) {
+        playerConfig.plugins = [(window as any).FlvPlayer];
+        playerConfig.flv = { ...liveConfig };
+    } else if (videoUrl.includes('.m3u8')) {
+        playerConfig.plugins = [(window as any).HlsPlayer];
+        playerConfig.hls = { ...liveConfig };
     }
 
-    dplayer.on('screenshot', () => {
-        captureScreenshot(dplayer.video)
-    })
-}
-
-const saveScreenshot = async (link: HTMLAnchorElement) => {
-    const base64Data = link.href.split(',')[1]
-    const time = new Date().toLocaleString('zh-CN').replace(/[\/\s:]/g, '-')
-    const fileName = `${props.liveInfo.name}(${time}).png`
-
-    try {
-        const binaryString = atob(base64Data)
-        const bytes = new Uint8Array(binaryString.length)
-        for (let i = 0; i < binaryString.length; i++) {
-            bytes[i] = binaryString.charCodeAt(i)
-        }
-
-        const filePath = await dialog.save({
-            defaultPath: fileName,
-            filters: [{ name: 'Images', extensions: ['png'] }]
-        })
-
-        if (filePath) {
-            await writeBinaryFile(filePath, bytes)
-        }
-    } catch (e) {
-        alert('保存截图失败:' + e)
-        console.error('保存截图失败:', e)
-    }
-}
-
-const captureScreenshot = (video: HTMLVideoElement) => {
-    if (!video) return
-
-    const canvas = document.createElement('canvas')
-    canvas.width = video.videoWidth
-    canvas.height = video.videoHeight
-    const ctx = canvas.getContext('2d') as CanvasRenderingContext2D
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-
-    const link = document.createElement('a')
-    const time = new Date().toLocaleString('zh-CN').replace(/[\/\s:]/g, '-')
-    link.download = `${props.liveInfo.name}(${time}).png`
-    link.href = canvas.toDataURL('image/png')
-    link.click()
-    
-    // Save to file using Tauri fs plugin
-    if (window.__TAURI__){
-        saveScreenshot(link)
-    }
+    dplayer = new (window as any).Player(playerConfig);
+    dplayer.on('ready', () => {
+        dplayer.play().catch(e => console.error("Auto-play blocked", e));
+        startLatencyMonitor();
+    });
 }
 
 const loading = ref(false)
@@ -283,14 +185,6 @@ const handleSearchSame = async () => {
 
 const destroyPlayer = () => {
     stopLatencyMonitor()
-    if (hls) {
-        hls.destroy()
-        hls = null
-    }
-    if (flvPlayer) {
-        flvPlayer.destroy()
-        flvPlayer = null
-    }
     if (dplayer) {
         dplayer.destroy()
         dplayer = null
