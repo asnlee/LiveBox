@@ -91,7 +91,7 @@ const stopLatencyMonitor = () => {
     }
 }
 
-const loadLive = (videoUrl: string, live: boolean = true) => {
+const loadLive = (videoUrl: string, videoUrls: string[] = []) => {
     stopLatencyMonitor()
     if (dplayer) {
         dplayer.destroy()
@@ -101,7 +101,7 @@ const loadLive = (videoUrl: string, live: boolean = true) => {
     const playerConfig: any = {
         el: document.getElementById('dplayer'),
         url: videoUrl,
-        isLive: live,
+        isLive: true,
         width: '100%',
         height: '100%',
         volume: 1,
@@ -132,6 +132,12 @@ const loadLive = (videoUrl: string, live: boolean = true) => {
     dplayer.on('ready', () => {
         dplayer.play().catch(e => console.error("Auto-play blocked", e));
         startLatencyMonitor();
+    });
+    dplayer.on('error', () => {
+        const nextUrl = videoUrls.slice(1)[0]
+        if (nextUrl) {
+            loadLive(nextUrl, videoUrls.slice(1));
+        }
     });
 }
 

@@ -194,7 +194,7 @@ const startListen = async (inputUrl: string) => {
                 console.log('videoUrls', videoUrls)
                 
                 let videoUrl = videoUrls[0]
-                liveVideoRef.value?.loadLive(videoUrl)
+                liveVideoRef.value?.loadLive(videoUrl, videoUrls)
                 pushUrl.value = videoUrl
                 creatSokcet(roomInfo.id_str, roomJson.unique_id, roomJson.ttwid)
             } else {
