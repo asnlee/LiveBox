@@ -30,9 +30,9 @@
         开始采集
     </el-button>
 
-    <el-button type="primary" class="startListen" @click="handleOpenWindow">
+    <!-- <el-button type="primary" class="startListen" @click="handleOpenWindow">
         新窗口
-    </el-button>
+    </el-button> -->
 </template>
 
 <script setup lang="ts">

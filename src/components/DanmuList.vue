@@ -215,6 +215,7 @@ defineExpose({
     scrollbar-color: #363741 transparent;
     scrollbar-width: thin;
     overflow-y: scroll;
+    font-size: 14px;
 
     .msgBox {
         display: flex;

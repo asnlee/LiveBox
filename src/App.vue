@@ -2,9 +2,6 @@
     <div class="container">
 
         <div class="liveUrl">
-            <div class="time">
-                {{ currentTime }}
-            </div>
             <SearchBar 
                 ref="searchBarRef"
                 @start="startListen" 
@@ -21,6 +18,7 @@
                 :liveInfo="liveInfo" 
                 :diamond="diamond"
                 @pay="handlePay"
+                @ready="handleReady"
             />
             <DanmuList 
                 ref="danmuListRef"
@@ -31,7 +29,18 @@
             />
         </div>
 
-        <MemoList :liveInfo="liveInfo" />
+        <div class="info">
+            <span>{{ currentTime }}</span>
+            <span v-if="updateAvailable" class="version-tip" @click="openRelease">
+                <b>发现新版本</b> {{ latestVersion }}
+            </span>
+            <span v-else>
+                v{{ currentVersion }} 
+                <b @click="checkForUpdate" style="cursor: pointer;">{{ checkingError ? '更新失败' : '检查更新' }}</b>
+            </span>
+            <span @click="copyStreamUrl">复制推流</span>
+        </div>
+        <!-- <MemoList :liveInfo="liveInfo" /> -->
     </div>
 
     <el-dialog
@@ -134,6 +143,10 @@ const handlePay = () => {
     emit('handlepay')
 }
 
+const handleReady = (videoUrl: string) => {
+    pushUrl.value = videoUrl
+}
+
 const startListen = async (inputUrl: string) => {
     const url = inputUrl.trim()
     localStorage.setItem('url', url)
@@ -195,7 +208,6 @@ const startListen = async (inputUrl: string) => {
                 
                 let videoUrl = videoUrls[0]
                 liveVideoRef.value?.loadLive(videoUrl, videoUrls)
-                pushUrl.value = videoUrl
                 creatSokcet(roomInfo.id_str, roomJson.unique_id, roomJson.ttwid)
             } else {
                 ElMessage.success('live is over!')
@@ -272,6 +284,65 @@ onMounted(() => {
 onUnmounted(() => {
     clearInterval(timeInterval)
 })
+
+const copyStreamUrl = () => {
+    navigator.clipboard.writeText(pushUrl.value)
+    ElMessage.success('已复制流地址')
+}
+
+const currentVersion = ref('')
+const latestVersion = ref('')
+const updateAvailable = ref(false)
+const checkingError = ref(false)
+
+const compareVersions = (v1: string, v2: string): number => {
+    const parts1 = v1.replace(/^v/, '').split('.').map(Number)
+    const parts2 = v2.replace(/^v/, '').split('.').map(Number)
+    for (let i = 0; i < Math.max(parts1.length, parts2.length); i++) {
+        const p1 = parts1[i] || 0
+        const p2 = parts2[i] || 0
+        if (p1 < p2) return -1
+        if (p1 > p2) return 1
+    }
+    return 0
+}
+
+const checkForUpdate = async () => {
+    try {
+        const res = await fetch('https://api.github.com/repos/asnlee/LiveBox/releases/latest')
+        if (!res.ok) throw new Error(`HTTP ${res.status}`) 
+        const data = await res.json()        
+        latestVersion.value = data.tag_name || data.name || ''
+        if (compareVersions(currentVersion.value, latestVersion.value) < 0) {
+            updateAvailable.value = true
+        }
+        checkingError.value = false
+    } catch (error) {
+        console.error('Check update failed:', error)
+        checkingError.value = true
+    }
+}
+
+const openRelease = () => {
+    window.open('https://github.com/asnlee/LiveBox/releases', '_blank')
+}
+
+const initVersion = async () => {
+    try {
+        const version: string = await invoke('get_version')
+        currentVersion.value = version
+        checkForUpdate()
+    } catch (error) {
+        currentVersion.value = '0.0.0'
+        checkForUpdate()
+    }
+}
+
+onMounted(() => {
+    updateTime()
+    timeInterval = setInterval(updateTime, 1000)
+    initVersion()
+})
 </script>
 
 <style scoped lang="scss">
@@ -304,14 +375,6 @@ onUnmounted(() => {
         justify-content: center;
     }
 
-    .time {
-        position: absolute;
-        top: 50%;
-        left: 3vh;
-        transform: translateY(-50%);
-        z-index: 999;
-    }
-
     .pushUrl {
         position: absolute;
         top: 50%;
@@ -331,6 +394,24 @@ onUnmounted(() => {
     .tips {
         font-size: small;
         color: #999;
+    }
+}
+
+.info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    padding: 0 20px;
+    font-size: 14px;
+    font-size: small;
+    color: #333;
+    .version-tip {
+        color: #409eff;
+        cursor: pointer;
+        &:hover {
+            text-decoration: underline;
+        }
     }
 }
 </style>

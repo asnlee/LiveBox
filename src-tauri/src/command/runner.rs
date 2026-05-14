@@ -83,7 +83,6 @@ impl DouYinReq {
         // 替换里面的双引号,方便json解析
         let stream_info = String::from(stream_info);
         self.stream_info = stream_info.replace(r#"\""#, r#"""#);
-        println!("直播流信息是：{}", self.stream_info);
         Ok(LiveInfo {
             room_info: self.room_info.clone(),
             stream_info: self.stream_info.clone(),

@@ -85,3 +85,8 @@ pub async fn upload_file(file_name: String, file_data: Vec<u8>) -> Result<String
 
     result
 }
+
+#[tauri::command]
+pub fn get_version(app_handle: AppHandle) -> String {
+    app_handle.config().package.version.as_ref().map(|s| s.as_str()).unwrap_or("0.0.0").to_string()
+}

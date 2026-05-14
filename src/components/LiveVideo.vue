@@ -32,8 +32,6 @@
 
 <script setup lang="ts">
 import { Search, Loading } from '@element-plus/icons-vue'
-import { writeBinaryFile } from '@tauri-apps/api/fs';
-import { dialog } from '@tauri-apps/api';
 import { invoke } from '@tauri-apps/api/tauri'
 import { ref } from 'vue';
 
@@ -57,6 +55,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
     (e: 'pay'): void
+    (e: 'ready', videoUrl: string): void
 }>()
 
 let dplayer: any = null
@@ -132,6 +131,7 @@ const loadLive = (videoUrl: string, videoUrls: string[] = []) => {
     dplayer.on('ready', () => {
         dplayer.play().catch(e => console.error("Auto-play blocked", e));
         startLatencyMonitor();
+        emit('ready', videoUrl)
     });
     dplayer.on('error', () => {
         const nextUrl = videoUrls.slice(1)[0]
@@ -275,6 +275,7 @@ defineExpose({
         z-index: 999;
         user-select: none;
         color: white;
+        font-size: 14px;
     }
 
     .searchSame {
