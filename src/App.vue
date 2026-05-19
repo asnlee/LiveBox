@@ -196,10 +196,9 @@ const startListen = async (inputUrl: string) => {
                     anchor_name: roomInfo.owner.nickname,
                     roomId: url.match(/\d{9,12}/g)?.shift() || roomInfo.id_str,
                     url: url,
-                })
+                })                
                 const videoUrls = [
-                    streamInfo?.stream?.origin?.main?.flv,
-                    streamInfo?.stream?.origin?.backup?.flv,
+                    streamInfo?.flv,
                     roomInfo.stream_url.flv_pull_url[
                         roomInfo.stream_url.default_resolution
                     ],

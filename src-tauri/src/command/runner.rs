@@ -67,11 +67,11 @@ impl DouYinReq {
             println!("主播已停播了");
             // 使用正则表达式匹配直播间信息
             re = Regex::new(r#"anchor\\":(.*?),\\"open_id_str"#).unwrap();
-            re_stream = Regex::new(r#"streamData\\":\{\\"H265_streamData\\":(.*?),\\"H264_streamData"#).unwrap();
+            re_stream = Regex::new(r#"origin\\":\{\\"main\\":(.*?),\\"backup"#).unwrap();
         } else {
             // 使用正则表达式匹配直播间信息
             re = Regex::new(r#"roomInfo\\":\{\\"room\\":(.*?),\\"toolbar_data"#).unwrap();
-            re_stream = Regex::new(r#"streamData\\":\{\\"H265_streamData\\":(.*?),\\"H264_streamData"#).unwrap();
+            re_stream = Regex::new(r#"origin\\":\{\\"main\\":(.*?),\\"backup"#).unwrap();
             let unique_re = Regex::new(r#"user_unique_id\\":\\"(.*?)\\"}"#).unwrap();
             unique_id = unique_re.captures(&body).unwrap().get(1).unwrap().as_str();
         }
