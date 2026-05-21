@@ -67,11 +67,11 @@ impl DouYinReq {
             println!("主播已停播了");
             // 使用正则表达式匹配直播间信息
             re = Regex::new(r#"anchor\\":(.*?),\\"open_id_str"#).unwrap();
-            re_stream = Regex::new(r#"origin\\":\{\\"main\\":(.*?),\\"backup"#).unwrap();
+            re_stream = Regex::new(r#"anchor\\":(.*?),\\"open_id_str"#).unwrap();
         } else {
             // 使用正则表达式匹配直播间信息
             re = Regex::new(r#"roomInfo\\":\{\\"room\\":(.*?),\\"toolbar_data"#).unwrap();
-            re_stream = Regex::new(r#"origin\\":\{\\"main\\":(.*?),\\"backup"#).unwrap();
+            re_stream = Regex::new(r#"origin\\":\{\\"main\\":(.*?),\\"ao\\":\{\\"main\\""#).unwrap();
             let unique_re = Regex::new(r#"user_unique_id\\":\\"(.*?)\\"}"#).unwrap();
             unique_id = unique_re.captures(&body).unwrap().get(1).unwrap().as_str();
         }
@@ -81,8 +81,9 @@ impl DouYinReq {
         let room_info = String::from(main_info) + "}";
         self.room_info = room_info.replace(r#"\""#, r#"""#);
         // 替换里面的双引号,方便json解析
-        let stream_info = String::from(stream_info);
+        let stream_info = "{\"origin\":{\"main\":".to_string() + &String::from(stream_info) + "}";
         self.stream_info = stream_info.replace(r#"\""#, r#"""#);
+        // println!("获取直播间的stream_info: {}", self.stream_info);
         Ok(LiveInfo {
             room_info: self.room_info.clone(),
             stream_info: self.stream_info.clone(),
