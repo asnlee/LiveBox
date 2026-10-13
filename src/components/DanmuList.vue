@@ -13,10 +13,11 @@
                 class="msgBox"
                 :size-dependencies="[item.name, item.msg]"
                 :data-index="item.id"
+                @click="toggleMarkName(item.name)"
             >
-                <div class="content">
-                    <span class="name">{{ item.name }}：</span>
-                    <span class="msg">{{ item.msg }}</span>
+                <div class="content" style="cursor: pointer;">
+                    <span class="name" :class="{ marked: markedNames.has(item.name) }"><span v-if="item.time">[{{ item.time }}]</span> {{ item.name }}：</span>
+                    <span class="msg" :class="{ marked: markedNames.has(item.name) }">{{ item.msg }}</span>
                 </div>
             </DynamicScrollerItem>
         </template>
@@ -53,7 +54,18 @@ const emit = defineEmits<{
     updateDiamond: [value: number]
 }>()
 
+const markedNames = ref(new Set<string>([]));
 const messageList = ref<Message[]>([...DEFAULT_MESSAGE])
+
+const toggleMarkName = (name) => {
+	const newSet = new Set(markedNames.value);
+	if (newSet.has(name)) {
+		newSet.delete(name);
+	} else {
+		newSet.add(name);
+	}
+	markedNames.value = newSet;
+};
 
 let scrollTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -136,6 +148,7 @@ const decodeChat = (data: any) => {
         id: common.msgId,
         name: user.nickName,
         msg: content,
+        time: new Date().toLocaleTimeString('zh-CN', { hour12: false }),
     }
     props.checkList?.includes('chat') && addMessage(message)
     pushMessage({ type: 'chat', data: message })
@@ -233,6 +246,10 @@ defineExpose({
             color: white;
             white-space: wrap;
         }
+    }
+    
+    .marked {
+        color: #ff4d4d !important;
     }
 }
 </style>
